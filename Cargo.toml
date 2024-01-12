@@ -8,3 +8,11 @@ edition = "2021"
 
 [dependencies]
 ecs-proc-macros = { path = "ecs-proc-macros" }
+hashbrown = { version = "0.14.3", features = ["nightly"]}
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "my_benchmark"
+harness = false

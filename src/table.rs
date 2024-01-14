@@ -22,11 +22,11 @@ pub struct NodeBundle {
     nodes: HashSet<NodeId>, // node id (components)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct NodeFilter {
-    get: Vec<usize>,
-    with: HashSet<usize>,
-    without: HashSet<usize>,
+    pub get: HashSet<usize>,
+    pub with: HashSet<usize>,
+    pub without: HashSet<usize>,
 }
 
 #[derive(Debug)]
@@ -53,11 +53,11 @@ impl Table {
 
     pub fn get_dimension_at_indices(
         &self,
-        dim: &usize,
+        dim: usize,
         filter: NodeFilter,
     ) -> Result<Vec<NodeBundle>, TableError> {
-        if *dim > 1 {
-            return Err(TableError::DimensionOutOfBounds(*dim));
+        if dim > 1 {
+            return Err(TableError::DimensionOutOfBounds(dim));
         }
 
         let mut node_bundles: Vec<NodeBundle> = Vec::new();
@@ -66,23 +66,27 @@ impl Table {
         let mut current_node_ids: HashMap<usize, Option<NodeId>> = HashMap::new();
         let mut nearest_node_pos = usize::MAX;
 
+        let mut node_filter_bitflag: usize = 0;
+
         for (offset, index) in filter
             .get
             .iter()
             .chain(filter.with.iter().chain(filter.without.iter()))
             .enumerate()
         {
-            let try_first_node_id = self.first_nodes[*dim]
+            let try_first_node_id = self.first_nodes[dim]
                 .iter()
-                .find(|&node_id| node_id.0[*dim] == *index);
+                .find(|&node_id| node_id.0[dim] == *index);
             if let Some(node_id) = try_first_node_id {
                 nearest_node_pos = nearest_node_pos.min(node_id.0[1 - dim]);
                 current_node_ids.insert(*index, try_first_node_id.cloned());
             }
             node_bundle_verification_map.insert(*index, offset);
-        }
 
-        let node_filter_bitmap: usize = (1 << node_bundle_verification_map.len()) - 1;
+            if !filter.without.contains(index) {
+                node_filter_bitflag |= 1 << offset;
+            }
+        }
 
         let number_of_indices = current_node_ids.len();
 
@@ -95,33 +99,28 @@ impl Table {
                 id: nearest_node_pos,
                 nodes: HashSet::new(),
             };
-            let mut node_bundle_bitmap: usize = 0;
+            let mut node_bundle_bitflag: usize = 0;
 
             let mut capped_lines: usize = 0;
-
             let mut node_pos_not_nearest: usize = 0;
 
             for (index, try_node_id) in current_node_ids.iter_mut() {
                 if let Some(mut node_id) = try_node_id {
                     // Check alignment
                     if node_id.0[1 - dim] == nearest_node_pos {
-                        // Add all the aligned nodes to node bundle
-                        node_bundle.nodes.insert(node_id);
+                        // Add all filtered aligned nodes to node bundle
+                        if filter.get.contains(index) {
+                            node_bundle.nodes.insert(node_id);
+                        }
 
                         // Assign to the bundle's bitflag
-                        let bit = if filter.get.contains(index)
-                            || filter.with.contains(index) && !filter.without.contains(index)
-                        {
-                            1
-                        } else {
-                            0
-                        };
-
-                        node_bundle_bitmap |= bit << node_bundle_verification_map[index];
+                        if !filter.without.contains(index) {
+                            node_bundle_bitflag |= 1 << node_bundle_verification_map[index];
+                        }
 
                         // Step node if it has a neighbor
                         if let Some(forward_neighbor_pos) =
-                            self.nodes[&node_id].forward_neighbors[*dim]
+                            self.nodes[&node_id].forward_neighbors[dim]
                         {
                             node_id.0[1 - dim] = forward_neighbor_pos;
                             *try_node_id = Some(node_id);
@@ -138,7 +137,7 @@ impl Table {
             }
 
             // Verify node bundle
-            if node_bundle_bitmap == node_filter_bitmap {
+            if node_bundle_bitflag == node_filter_bitflag {
                 node_bundles.push(node_bundle);
             }
 

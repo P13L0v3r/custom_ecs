@@ -11,7 +11,7 @@ pub fn component(input: TokenStream) -> TokenStream {
 
     // Build the output, possibly using quasi-quotation
     let expanded = quote! {
-        impl custom_ecs::component::Component for #name {
+        impl crate::component::Component for #name {
         }
     };
 

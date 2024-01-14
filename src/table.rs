@@ -5,7 +5,6 @@ pub struct Node {
     // For each dimension and direction, the indices of the neighbor on the opposing dimension
     forward_neighbors: [Option<usize>; 2],
     backward_neighbors: [Option<usize>; 2],
-    //position: [usize; 2],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -17,11 +16,23 @@ pub enum TableError {
     NoEnabledNodeForId(NodeId),
 }
 
+#[derive(Debug, Default)]
+pub struct NodeBundle {
+    id: usize,              // index of the query dimension (entity)
+    nodes: HashSet<NodeId>, // node id (components)
+}
+
+#[derive(Debug)]
+pub struct NodeFilter {
+    get: Vec<usize>,
+    with: HashSet<usize>,
+    without: HashSet<usize>,
+}
+
 #[derive(Debug)]
 pub struct Table {
     first_nodes: [HashSet<NodeId>; 2],
     nodes: HashMap<NodeId, Node>,
-    //last_nodes: Vec<Node>,
 }
 
 impl Default for Table {
@@ -40,42 +51,105 @@ impl Table {
         }
     }
 
-    pub fn get_dimension_at_index(
+    pub fn get_dimension_at_indices(
         &self,
         dim: &usize,
-        index: &usize,
-    ) -> Result<Vec<NodeId>, TableError> {
+        filter: NodeFilter,
+    ) -> Result<Vec<NodeBundle>, TableError> {
         if *dim > 1 {
             return Err(TableError::DimensionOutOfBounds(*dim));
         }
 
-        let mut dimension_at_index: Vec<NodeId> = Vec::new();
+        let mut node_bundles: Vec<NodeBundle> = Vec::new();
+        let mut node_bundle_verification_map: HashMap<usize, usize> = HashMap::new(); // key - index; value - offset
 
-        let mut try_first_node_id = self.first_nodes[*dim]
+        let mut current_node_ids: HashMap<usize, Option<NodeId>> = HashMap::new();
+        let mut nearest_node_pos = usize::MAX;
+
+        for (offset, index) in filter
+            .get
             .iter()
-            .find(|&node| node.0[*dim] == *index);
-
-        while let Some(current_node_id) = try_first_node_id {
-            if let Some(current_node) = self.nodes.get(current_node_id) {
-                dimension_at_index.push(*current_node_id);
-                if let Some(position) = current_node.forward_neighbors[*dim] {
-                    let mut neigbor_position = current_node_id.0;
-                    neigbor_position[1 - *dim] = position;
-                    let new_id = NodeId(neigbor_position);
-                    if let Some((id, _)) = self.nodes.get_key_value(&new_id) {
-                        try_first_node_id = Some(id);
-                    } else {
-                        return Err(TableError::NoEnabledNodeForId(new_id));
-                    }
-                } else {
-                    try_first_node_id = None;
-                }
-            } else {
-                return Err(TableError::NoEnabledNodeForId(*current_node_id));
+            .chain(filter.with.iter().chain(filter.without.iter()))
+            .enumerate()
+        {
+            let try_first_node_id = self.first_nodes[*dim]
+                .iter()
+                .find(|&node_id| node_id.0[*dim] == *index);
+            if let Some(node_id) = try_first_node_id {
+                nearest_node_pos = nearest_node_pos.min(node_id.0[1 - dim]);
+                current_node_ids.insert(*index, try_first_node_id.cloned());
             }
+            node_bundle_verification_map.insert(*index, offset);
         }
 
-        Ok(dimension_at_index)
+        let node_filter_bitmap: usize = (1 << node_bundle_verification_map.len()) - 1;
+
+        let number_of_indices = current_node_ids.len();
+
+        loop {
+            for node_id in current_node_ids.values().flatten() {
+                nearest_node_pos = nearest_node_pos.min(node_id.0[1 - dim]);
+            }
+
+            let mut node_bundle = NodeBundle {
+                id: nearest_node_pos,
+                nodes: HashSet::new(),
+            };
+            let mut node_bundle_bitmap: usize = 0;
+
+            let mut capped_lines: usize = 0;
+
+            let mut node_pos_not_nearest: usize = 0;
+
+            for (index, try_node_id) in current_node_ids.iter_mut() {
+                if let Some(mut node_id) = try_node_id {
+                    // Check alignment
+                    if node_id.0[1 - dim] == nearest_node_pos {
+                        // Add all the aligned nodes to node bundle
+                        node_bundle.nodes.insert(node_id);
+
+                        // Assign to the bundle's bitflag
+                        let bit = if filter.get.contains(index)
+                            || filter.with.contains(index) && !filter.without.contains(index)
+                        {
+                            1
+                        } else {
+                            0
+                        };
+
+                        node_bundle_bitmap |= bit << node_bundle_verification_map[index];
+
+                        // Step node if it has a neighbor
+                        if let Some(forward_neighbor_pos) =
+                            self.nodes[&node_id].forward_neighbors[*dim]
+                        {
+                            node_id.0[1 - dim] = forward_neighbor_pos;
+                            *try_node_id = Some(node_id);
+                        } else {
+                            *try_node_id = None;
+                        }
+                    } else {
+                        // Update seed for nearest_node_pos
+                        node_pos_not_nearest = node_id.0[1 - dim];
+                    }
+                } else {
+                    capped_lines += 1;
+                }
+            }
+
+            // Verify node bundle
+            if node_bundle_bitmap == node_filter_bitmap {
+                node_bundles.push(node_bundle);
+            }
+
+            if capped_lines == number_of_indices {
+                break;
+            }
+            // Seed nearest_node_pos
+            nearest_node_pos = node_pos_not_nearest;
+        }
+
+        Ok(node_bundles)
     }
 
     pub fn enable_node(&mut self, position: [usize; 2]) -> Result<NodeId, TableError> {

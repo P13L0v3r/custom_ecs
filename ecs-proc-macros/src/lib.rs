@@ -20,7 +20,7 @@ pub fn component(input: TokenStream) -> TokenStream {
 
     // Build the output, possibly using quasi-quotation
     let expanded = quote! {
-        impl #impl_generics component::Component for #name #ty_generics #where_clause {
+        impl #impl_generics Component for #name #ty_generics #where_clause {
             const COMPONENT_ID: usize = #hash;
         }
     };

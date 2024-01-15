@@ -4,5 +4,3 @@ pub mod component;
 pub mod entity;
 pub mod macros;
 pub mod table;
-
-//use ecs_proc_macros::*;

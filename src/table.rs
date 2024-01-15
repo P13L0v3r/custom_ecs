@@ -8,7 +8,7 @@ pub struct Node {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NodeId([usize; 2]);
+pub struct NodeId(pub(crate) [usize; 2]);
 
 #[derive(Debug)]
 pub enum TableError {
@@ -264,11 +264,9 @@ impl Table {
 
                 self.first_nodes[dim].remove(node_id);
             }
-        } else {
-            return Err(TableError::NoEnabledNodeForId(*node_id));
-        }
 
-        self.nodes.remove(node_id);
+            self.nodes.remove(node_id);
+        }
 
         Ok(*node_id)
     }

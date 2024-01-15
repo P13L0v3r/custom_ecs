@@ -1,2 +1,2 @@
 #[derive(Debug)]
-pub struct Entity(usize);
+pub struct Entity(pub(crate) usize);

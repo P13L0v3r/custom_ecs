@@ -114,9 +114,7 @@ impl Table {
                         }
 
                         // Assign to the bundle's bitflag
-                        if !filter.without.contains(index) {
-                            node_bundle_bitflag |= 1 << node_bundle_verification_map[index];
-                        }
+                        node_bundle_bitflag |= 1 << node_bundle_verification_map[index];
 
                         // Step node if it has a neighbor
                         if let Some(forward_neighbor_pos) =

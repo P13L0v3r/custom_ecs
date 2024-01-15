@@ -1,3 +1,5 @@
-pub trait Component {}
+pub use ecs_proc_macros::Component;
 
-//pub struct ComponentId(usize);
+pub trait Component {
+    const COMPONENT_ID: usize;
+}

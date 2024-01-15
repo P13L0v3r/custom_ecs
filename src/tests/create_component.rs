@@ -1,6 +1,13 @@
-use ecs_proc_macros::Component;
+use crate::component::{self, *};
 
 #[derive(Component)]
 struct HealthBar;
 
-//component!(HealthBar);
+#[derive(Component)]
+struct Health;
+
+#[test]
+fn component_hash() {
+    println!("{}", HealthBar::COMPONENT_ID);
+    println!("{}", Health::COMPONENT_ID);
+}

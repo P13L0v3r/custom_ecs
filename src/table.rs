@@ -17,9 +17,9 @@ pub enum TableError {
 }
 
 #[derive(Debug, Default)]
-pub struct NodeBundle {
-    id: usize,              // index of the query dimension (entity)
-    nodes: HashSet<NodeId>, // node id (components)
+pub(crate) struct NodeBundle {
+    pub(crate) id: usize,              // index of the query dimension (entity)
+    pub(crate) nodes: HashSet<NodeId>, // node id (components)
 }
 
 #[derive(Debug, Default)]
@@ -51,7 +51,11 @@ impl Table {
         }
     }
 
-    pub fn get_dimension_at_indices(
+    pub fn size(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub(crate) fn get_dimension_at_indices(
         &self,
         dim: usize,
         filter: NodeFilter,

@@ -24,6 +24,14 @@ pub fn component(input: TokenStream) -> TokenStream {
             fn hash() -> usize where Self : Sized {
                 #hash
             }
+
+            fn as_any(&self) -> &dyn std::any::Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+                self
+            }
         }
     };
 

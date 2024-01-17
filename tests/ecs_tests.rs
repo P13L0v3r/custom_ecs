@@ -19,6 +19,11 @@ mod enemy {
         pub max: f32,
         pub current: f32,
     }
+
+    #[derive(Debug, Default)]
+    pub struct Damage {
+        pub max: f32,
+    }
 }
 
 #[test]

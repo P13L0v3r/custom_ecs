@@ -1,4 +1,5 @@
 use custom_ecs::*;
+use hashbrown::HashSet;
 
 mod player {
     use custom_ecs::*;
@@ -51,4 +52,17 @@ fn ecs_test() {
 fn hash_test() {
     println!("{}", player::Health::hash());
     println!("{}", enemy::Health::hash());
+}
+
+#[test]
+fn macro_test() {
+    //use player::Health;
+    let hash: HashSet<usize> = component_set!(player::Health, enemy::Health);
+    println!("{:?}", hash);
+
+    component_identifier!(player::Health);
+    component_identifier!(enemy::Health);
+
+    let filter = component_filter!((player::Health, enemy::Health));
+    println!("{:?}", filter);
 }

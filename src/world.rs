@@ -259,6 +259,10 @@ impl World {
             .map(|data| data.as_any_mut().downcast_mut::<T>().unwrap())
     }
 
+    /* pub fn query(&self, components: ) {
+
+    } */
+
     pub fn ecs_events_iter(&self) -> Iter<ECSEvent> {
         self.ecs_events.iter()
     }

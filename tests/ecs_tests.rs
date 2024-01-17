@@ -46,3 +46,9 @@ fn ecs_test() {
     let entity_health = new_world.query_entity_component::<player::Health>(entity);
     println!("{:?}", entity_health);
 }
+
+#[test]
+fn hash_test() {
+    println!("{}", player::Health::hash());
+    println!("{}", enemy::Health::hash());
+}

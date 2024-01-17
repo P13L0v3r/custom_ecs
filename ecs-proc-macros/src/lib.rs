@@ -1,5 +1,6 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
+use rand::{thread_rng, Rng};
 use syn::{parse_macro_input, DeriveInput};
 
 #[proc_macro_derive(Component)]
@@ -9,12 +10,25 @@ pub fn component(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let name = input.ident;
-    let name_string = name.to_string();
-    let name_bytes = name_string.as_bytes();
+    let mut component_string = name.to_string();
+
+    let data_string = match input.data {
+        syn::Data::Struct(data) => data.fields.to_token_stream().to_string(),
+        syn::Data::Enum(data) => data.variants.to_token_stream().to_string(),
+        syn::Data::Union(_) => String::new(),
+    };
+
+    component_string.push_str(&data_string);
+
+    let mut rng = thread_rng();
+    let rand_char = rng.gen::<char>();
+    component_string.push(rand_char);
+
+    let component_bytes = component_string.as_bytes();
 
     let mut hash: usize = 5381;
 
-    for c in name_bytes.iter() {
+    for c in component_bytes.iter() {
         hash = ((hash << 6).wrapping_add(hash)).wrapping_add(*c as usize);
     }
 

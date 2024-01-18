@@ -5,6 +5,7 @@ pub mod entity;
 pub mod events;
 pub mod macros;
 pub mod table;
+pub(crate) mod utils;
 pub mod world;
 
 pub use component::*;

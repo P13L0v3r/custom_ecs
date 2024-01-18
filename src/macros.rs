@@ -13,13 +13,6 @@ macro_rules! component_set {
 }
 
 #[macro_export]
-macro_rules! component_identifier {
-    ($x:ty) => {
-        println!("{:?}", <$x>::hash())
-    };
-}
-
-#[macro_export]
 macro_rules! component_filter {
     (
         ($($get:ty),+ $(,)?)

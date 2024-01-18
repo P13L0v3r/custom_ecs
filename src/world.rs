@@ -3,109 +3,11 @@ use std::{fmt::Debug, slice::Iter};
 use crate::{
     events::ECSEvent,
     hashset,
-    table::{NodeFilter, NodeId, Table},
+    table::{NodeBundle, NodeFilter, NodeId, Table},
+    utils::entity_range::ValidEntityRange,
     Component, Entity,
 };
-use hashbrown::HashMap;
-
-#[derive(Debug, Clone)]
-struct ValidEntityRange {
-    lower_bound: usize,
-    upper_bound: Option<usize>,
-}
-
-impl ValidEntityRange {
-    fn new(lower_bound: usize, upper_bound: Option<usize>) -> Self {
-        Self {
-            lower_bound,
-            upper_bound,
-        }
-    }
-
-    fn split_at(&mut self, index: &usize) -> Option<ValidEntityRange> {
-        if *index >= self.lower_bound {
-            let new_range = match *index == self.lower_bound {
-                false => Some(ValidEntityRange {
-                    lower_bound: self.lower_bound,
-                    upper_bound: Some(index - 1),
-                }),
-                true => None,
-            };
-            self.lower_bound = index + 1;
-            new_range
-        } else {
-            None
-        }
-    }
-
-    fn merge_with(&mut self, other: &ValidEntityRange) -> bool {
-        if self.touches(other) {
-            let max_upper_bound: Option<usize> = match (self.upper_bound, other.upper_bound) {
-                (None, None) => None,
-                (None, Some(_)) | (Some(_), None) => None,
-                (Some(a), Some(b)) => Some(a.max(b)),
-            };
-            let min_lower_bound: usize = self.lower_bound.min(other.lower_bound);
-
-            self.lower_bound = min_lower_bound;
-            self.upper_bound = max_upper_bound;
-
-            true
-        } else {
-            false
-        }
-    }
-
-    fn contains(&self, index: &usize) -> bool {
-        if *index >= self.lower_bound {
-            if let Some(upper_bound) = self.upper_bound {
-                *index <= upper_bound
-            } else {
-                true
-            }
-        } else {
-            false
-        }
-    }
-
-    fn intersects(&self, other: &ValidEntityRange) -> bool {
-        let min_upper_bound: Option<usize> = match (self.upper_bound, other.upper_bound) {
-            (None, None) => None,
-            (None, Some(a)) | (Some(a), None) => Some(a),
-            (Some(a), Some(b)) => Some(a.min(b)),
-        };
-        let max_lower_bound: usize = self.lower_bound.max(other.lower_bound);
-
-        if let Some(upper_bound) = min_upper_bound {
-            max_lower_bound <= upper_bound
-        } else {
-            true
-        }
-    }
-
-    fn touches(&self, other: &ValidEntityRange) -> bool {
-        let min_upper_bound: Option<usize> = match (self.upper_bound, other.upper_bound) {
-            (None, None) => None,
-            (None, Some(a)) | (Some(a), None) => Some(a),
-            (Some(a), Some(b)) => Some(a.min(b)),
-        };
-        let max_lower_bound: usize = self.lower_bound.max(other.lower_bound);
-
-        if let Some(upper_bound) = min_upper_bound {
-            max_lower_bound <= upper_bound || max_lower_bound.abs_diff(upper_bound) <= 1
-        } else {
-            true
-        }
-    }
-
-    fn is_valid(&self) -> bool {
-        if let Some(upper_bound) = self.upper_bound {
-            self.lower_bound <= upper_bound
-        } else {
-            true
-        }
-    }
-}
+use hashbrown::{HashMap, HashSet};
 
 #[derive(Default)]
 pub struct World {
@@ -122,61 +24,6 @@ impl World {
             .valid_entities
             .push(ValidEntityRange::new(0, None));
         new_world
-    }
-
-    fn sort_entity_ranges(&mut self) {
-        self.valid_entities
-            .sort_by(|a, b| a.lower_bound.cmp(&b.lower_bound));
-    }
-
-    fn remove_valid_entity(&mut self, index: usize) {
-        for (range_index, old_range) in self.valid_entities.iter_mut().enumerate() {
-            if old_range.contains(&index) {
-                if let Some(new_range) = old_range.split_at(&index) {
-                    if new_range.is_valid() {
-                        if old_range.is_valid() {
-                            self.valid_entities.push(new_range);
-                        } else {
-                            *old_range = new_range;
-                        }
-                    } else if !old_range.is_valid() {
-                        self.valid_entities.swap_remove(range_index);
-                    }
-                } else if !old_range.is_valid() {
-                    self.valid_entities.swap_remove(range_index);
-                }
-
-                break;
-            }
-        }
-        self.sort_entity_ranges();
-    }
-
-    fn add_valid_entity(&mut self, index: usize) {
-        let mut range_glob: ValidEntityRange = ValidEntityRange {
-            lower_bound: index,
-            upper_bound: Some(index),
-        };
-
-        let mut new_valid_ranges: Vec<ValidEntityRange> = Vec::new();
-
-        for old_range in self.valid_entities.iter() {
-            if !range_glob.merge_with(old_range) {
-                new_valid_ranges.push(old_range.clone());
-            }
-        }
-
-        new_valid_ranges.push(range_glob);
-
-        self.valid_entities = new_valid_ranges;
-
-        self.sort_entity_ranges();
-    }
-
-    fn first_valid_entity(&self) -> Option<usize> {
-        self.valid_entities
-            .first()
-            .map(|first_valid_range| first_valid_range.lower_bound)
     }
 
     pub fn enable_component_for_entity<T>(&mut self, entity: Entity, component: T)
@@ -259,9 +106,89 @@ impl World {
             .map(|data| data.as_any_mut().downcast_mut::<T>().unwrap())
     }
 
-    /* pub fn query(&self, components: ) {
+    pub fn node_to_component<T>(&self, node_id: NodeId) -> Option<&T>
+    where
+        T: Component + 'static,
+    {
+        let component_hash = T::hash();
+        if component_hash == node_id.0[1] {
+            self.node_data
+                .get(&node_id)
+                .map(|data| data.as_any().downcast_ref::<T>().unwrap())
+        } else {
+            None
+        }
+    }
 
-    } */
+    pub fn node_to_component_mut<T>(&mut self, node_id: NodeId) -> Option<&mut T>
+    where
+        T: Component + 'static,
+    {
+        let component_hash = T::hash();
+        if component_hash == node_id.0[1] {
+            self.node_data
+                .get_mut(&node_id)
+                .map(|data| data.as_any_mut().downcast_mut::<T>().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn unpack<T>(&self, node_bundle: &NodeBundle) -> Option<&T>
+    where
+        T: Component + 'static,
+    {
+        let component_hash = T::hash();
+        let node_id = NodeId([node_bundle.id, component_hash]);
+        if node_bundle.nodes.contains(&node_id) {
+            self.node_data
+                .get(&node_id)
+                .map(|data| data.as_any().downcast_ref::<T>().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn unpack_mut<T>(&mut self, node_bundle: &mut NodeBundle) -> Option<&mut T>
+    where
+        T: Component + 'static,
+    {
+        let component_hash = T::hash();
+        let node_id = NodeId([node_bundle.id, component_hash]);
+        if node_bundle.nodes.contains(&node_id) {
+            self.node_data
+                .get_mut(&node_id)
+                .map(|data| data.as_any_mut().downcast_mut::<T>().unwrap())
+        } else {
+            None
+        }
+    }
+
+    pub fn entity_of(node_bundle: &NodeBundle) -> Entity {
+        Entity(node_bundle.id)
+    }
+
+    pub fn component_node_bundles(
+        &self,
+        get: Option<HashSet<usize>>,
+        with: Option<HashSet<usize>>,
+        without: Option<HashSet<usize>>,
+    ) -> Vec<NodeBundle> {
+        let component_filter = NodeFilter {
+            get: get.unwrap_or_default(),
+            with: with.unwrap_or_default(),
+            without: without.unwrap_or_default(),
+        };
+
+        if let Ok(node_bundle) = self
+            .node_table
+            .get_dimension_at_indices(1, component_filter)
+        {
+            node_bundle
+        } else {
+            Vec::new()
+        }
+    }
 
     pub fn ecs_events_iter(&self) -> Iter<ECSEvent> {
         self.ecs_events.iter()
@@ -269,6 +196,61 @@ impl World {
 
     pub fn tick(&mut self) {
         self.ecs_events = Vec::new();
+    }
+
+    fn sort_entity_ranges(&mut self) {
+        self.valid_entities
+            .sort_by(|a, b| a.lower_bound.cmp(&b.lower_bound));
+    }
+
+    fn remove_valid_entity(&mut self, index: usize) {
+        for (range_index, old_range) in self.valid_entities.iter_mut().enumerate() {
+            if old_range.contains(&index) {
+                if let Some(new_range) = old_range.split_at(&index) {
+                    if new_range.is_valid() {
+                        if old_range.is_valid() {
+                            self.valid_entities.push(new_range);
+                        } else {
+                            *old_range = new_range;
+                        }
+                    } else if !old_range.is_valid() {
+                        self.valid_entities.swap_remove(range_index);
+                    }
+                } else if !old_range.is_valid() {
+                    self.valid_entities.swap_remove(range_index);
+                }
+
+                break;
+            }
+        }
+        self.sort_entity_ranges();
+    }
+
+    fn add_valid_entity(&mut self, index: usize) {
+        let mut range_glob: ValidEntityRange = ValidEntityRange {
+            lower_bound: index,
+            upper_bound: Some(index),
+        };
+
+        let mut new_valid_ranges: Vec<ValidEntityRange> = Vec::new();
+
+        for old_range in self.valid_entities.iter() {
+            if !range_glob.merge_with(old_range) {
+                new_valid_ranges.push(old_range.clone());
+            }
+        }
+
+        new_valid_ranges.push(range_glob);
+
+        self.valid_entities = new_valid_ranges;
+
+        self.sort_entity_ranges();
+    }
+
+    fn first_valid_entity(&self) -> Option<usize> {
+        self.valid_entities
+            .first()
+            .map(|first_valid_range| first_valid_range.lower_bound)
     }
 }
 

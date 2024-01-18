@@ -17,9 +17,9 @@ pub enum TableError {
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct NodeBundle {
-    pub(crate) id: usize,              // index of the query dimension (entity)
-    pub(crate) nodes: HashSet<NodeId>, // node id (components)
+pub struct NodeBundle {
+    pub(crate) id: usize,              // index of the bundle
+    pub(crate) nodes: HashSet<NodeId>, // ids of the aligned nodes
 }
 
 #[derive(Debug, Default)]

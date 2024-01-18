@@ -29,28 +29,23 @@ mod enemy {
 #[test]
 fn ecs_test() {
     let mut new_world = World::new();
-    let entity = new_world.alloc_entity();
-    new_world.enable_component_for_entity(
-        entity,
-        player::Health {
-            max: 1.0,
-            current: 1.0,
-        },
-    );
-    let entity_health = new_world.query_entity_component::<player::Health>(entity);
-    println!("{:?}", entity_health);
-
-    if let Some(health) = new_world.query_entity_component_mut::<player::Health>(entity) {
-        health.current -= 0.1;
+    for _ in 0..10 {
+        let entity = new_world.alloc_entity();
+        new_world.enable_component_for_entity(
+            entity,
+            player::Health {
+                max: 1.0,
+                current: 1.0,
+            },
+        );
     }
 
-    let entity_health = new_world.query_entity_component::<player::Health>(entity);
-    println!("{:?}", entity_health);
-
-    new_world.disable_component_for_entity::<player::Health>(entity);
-
-    let entity_health = new_world.query_entity_component::<player::Health>(entity);
-    println!("{:?}", entity_health);
+    for bundle in new_world
+        .component_node_bundles(Some(component_set!(player::Health)), None, None)
+        .iter()
+    {
+        println!("{:?}", new_world.unpack::<player::Health>(bundle));
+    }
 }
 
 #[test]
@@ -64,9 +59,6 @@ fn macro_test() {
     //use player::Health;
     let hash: HashSet<usize> = component_set!(player::Health, enemy::Health);
     println!("{:?}", hash);
-
-    component_identifier!(player::Health);
-    component_identifier!(enemy::Health);
 
     let filter = component_filter!((player::Health, enemy::Health));
     println!("{:?}", filter);

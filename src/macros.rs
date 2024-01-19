@@ -62,8 +62,22 @@ macro_rules! component_filter {
 #[macro_export]
 macro_rules! world_query {
     ($world:ident, ($($get:ty),+ $(,)?)) => {
-        
+
         $world.component_node_bundles(Some(hashbrown::HashSet::from([$(<$get as Component>::hash()),+])), None, None).iter().map(|bundle| ($($world.unpack::<$get>(bundle).unwrap()),+))
+    };
+}
+
+#[macro_export]
+macro_rules! unpack {
+    ($world:ident, $bundle:ident, ($($get:ty),+ $(,)?)) => {
+        ($($world.unpack::<$get>($bundle).unwrap()),+)
+    };
+}
+
+#[macro_export]
+macro_rules! unpack_mut {
+    ($world:ident, $bundle:ident, ($($get:ty),+ $(,)?)) => {
+        ($($world.unpack_mut::<$get>($bundle).unwrap()),+)
     };
 }
 
@@ -71,7 +85,7 @@ macro_rules! world_query {
 /* #[macro_export]
 macro_rules! world_query_mut {
     ($world:ident, ($($get:ty),+ $(,)?)) => {
-        
+
         $world.component_node_bundles(Some(hashbrown::HashSet::from([$(<$get as Component>::hash()),+])), None, None).iter().map(|bundle| ($($world.unpack_mut::<$get>(bundle).unwrap()),+))
     };
 } */

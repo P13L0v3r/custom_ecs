@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use hashbrown::{hash_map::HashMap, HashSet};
 
 #[derive(Debug, Default, Clone)]
@@ -25,6 +27,10 @@ pub struct NodeBundle {
 impl NodeBundle {
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    pub fn nodes(&self) -> &HashSet<NodeId> {
+        &self.nodes
     }
 }
 

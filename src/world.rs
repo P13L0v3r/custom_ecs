@@ -87,7 +87,7 @@ impl World {
         }
     }
 
-    pub fn query_entity_component<T>(&self, entity: Entity) -> Option<&T>
+    pub fn entity_component<T>(&self, entity: Entity) -> Option<&T>
     where
         T: Component + 'static,
     {
@@ -98,7 +98,7 @@ impl World {
             .map(|data| data.as_any().downcast_ref::<T>().unwrap())
     }
 
-    pub fn query_entity_component_mut<T>(&mut self, entity: Entity) -> Option<&mut T>
+    pub fn entity_component_mut<T>(&mut self, entity: Entity) -> Option<&mut T>
     where
         T: Component + 'static,
     {
@@ -144,9 +144,7 @@ impl World {
         let component_hash = T::hash();
         let node_id = NodeId([node_bundle.id, component_hash]);
         if node_bundle.nodes.contains(&node_id) {
-            self.node_data
-                .get(&node_id)
-                .map(|data| data.as_any().downcast_ref::<T>().unwrap())
+            self.node_data.get(&node_id).unwrap().as_any().downcast_ref::<T>()
         } else {
             None
         }
@@ -159,9 +157,7 @@ impl World {
         let component_hash = T::hash();
         let node_id = NodeId([node_bundle.id, component_hash]);
         if node_bundle.nodes.contains(&node_id) {
-            self.node_data
-                .get_mut(&node_id)
-                .map(|data| data.as_any_mut().downcast_mut::<T>().unwrap())
+            self.node_data.get_mut(&node_id).unwrap().as_any_mut().downcast_mut::<T>()
         } else {
             None
         }

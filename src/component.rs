@@ -1,9 +1,6 @@
-use std::{any::Any, marker::PhantomData};
+use std::any::Any;
 
 pub use ecs_proc_macros::Component;
-use hashbrown::HashMap;
-
-use crate::{World, table::NodeBundle};
 
 pub trait Component {
     fn hash() -> usize
@@ -14,18 +11,13 @@ pub trait Component {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub trait ComponentUnPacker {
-    type ComponentType: Component + 'static;
-    
-    fn unpack_from_node_bundle<'a>(world: &'a World, node_bundle: &'a NodeBundle) -> Option<&'a Self::ComponentType> {
-        world.unpack::<Self::ComponentType>(node_bundle)
-    }
+pub trait ComponentGroup<'g> {}
 
-    fn unpack_from_node_bundle_mut<'a>(world: &'a mut World, node_bundle: &'a NodeBundle) -> Option<&'a mut Self::ComponentType> {
-        world.unpack_mut::<Self::ComponentType>(node_bundle)
-    }
+#[macro_export]
+macro_rules! component_group {
+    ($( $name:ident )+) => {
+        impl<'s, $($name: Component),+> ComponentGroup<'s> for ($($name,)+){}
+    };
 }
 
-pub struct ComponentId<T> where T : Component + 'static {
-    buf: T
-}
+component_group!(Health);

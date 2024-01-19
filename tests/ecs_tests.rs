@@ -1,5 +1,5 @@
-use custom_ecs::{*, table::NodeFilter};
-use ecs_proc_macros::{name_to_type, evaluate_string_var};
+use custom_ecs::{table::NodeFilter, *};
+use ecs_proc_macros::{evaluate_string_var, name_to_type};
 use hashbrown::HashSet;
 
 mod player {
@@ -51,8 +51,9 @@ fn ecs_test() {
     let id: usize = 0;
 }
 
-fn pass_type<T>() -> T 
-where T : Default 
+fn pass_type<T>() -> T
+where
+    T: Default,
 {
     T::default()
 }
@@ -79,11 +80,11 @@ fn macro_test() {
     //type_test::<(player::Health, enemy::Health),(),()>()
 }
 
-/* fn type_test<G,W,V>() {    
+/* fn type_test<G,W,V>() {
     let get = component_set!(G);
     let with = component_set!(W);
     let without = component_set!(V);
-    
+
     let filter = NodeFilter { get, with, without };
     println!("{:?}", filter);
 } */

@@ -22,6 +22,12 @@ pub struct NodeBundle {
     pub(crate) nodes: HashSet<NodeId>, // ids of the aligned nodes
 }
 
+impl NodeBundle {
+    pub fn id(&self) -> usize {
+        self.id
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct NodeFilter {
     pub get: HashSet<usize>,

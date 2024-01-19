@@ -1,7 +1,9 @@
+use std::str::FromStr;
+
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 use rand::{thread_rng, Rng};
-use syn::{parse_macro_input, DeriveInput};
+use syn::{parse_macro_input, DeriveInput, PatStruct, LitStr, Expr, Ident};
 
 #[proc_macro_derive(Component)]
 pub fn component(input: TokenStream) -> TokenStream {
@@ -47,8 +49,27 @@ pub fn component(input: TokenStream) -> TokenStream {
                 self
             }
         }
+
+        impl #impl_generics ComponentUnPacker for #name #ty_generics #where_clause {
+            type ComponentType = #name;
+        }
     };
 
     // Hand the output tokens back to the compiler
     TokenStream::from(expanded)
+}
+
+#[proc_macro]
+pub fn name_to_type(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as LitStr);
+    TokenStream::from_str(&input.value()).unwrap_or(TokenStream::new())
+}
+
+#[proc_macro]
+pub fn evaluate_string_var(input: TokenStream) -> TokenStream {
+    let ident = parse_macro_input!(input as Ident);
+    let ident_span = ident.span();
+    println!("{:?}",ident_span.source_text());
+    
+    TokenStream::new()
 }

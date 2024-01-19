@@ -1,4 +1,5 @@
-use custom_ecs::*;
+use custom_ecs::{*, table::NodeFilter};
+use ecs_proc_macros::{name_to_type, evaluate_string_var};
 use hashbrown::HashSet;
 
 mod player {
@@ -44,8 +45,16 @@ fn ecs_test() {
         .component_node_bundles(Some(component_set!(player::Health)), None, None)
         .iter()
     {
-        println!("{:?}", new_world.unpack::<player::Health>(bundle));
+        println!("{:?}", new_world.unpack_mut::<player::Health>(bundle));
     }
+
+    let id: usize = 0;
+}
+
+fn pass_type<T>() -> T 
+where T : Default 
+{
+    T::default()
 }
 
 #[test]
@@ -62,4 +71,19 @@ fn macro_test() {
 
     let filter = component_filter!((player::Health, enemy::Health));
     println!("{:?}", filter);
+
+    let t: name_to_type!("player::Health") = player::Health::default();
+
+    let n = "player::Health";
+
+    //type_test::<(player::Health, enemy::Health),(),()>()
 }
+
+/* fn type_test<G,W,V>() {    
+    let get = component_set!(G);
+    let with = component_set!(W);
+    let without = component_set!(V);
+    
+    let filter = NodeFilter { get, with, without };
+    println!("{:?}", filter);
+} */

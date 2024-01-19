@@ -1,4 +1,4 @@
-use std::{fmt::Debug, slice::Iter};
+use std::{fmt::Debug, slice::Iter, any::type_name};
 
 use crate::{
     events::ECSEvent,
@@ -15,6 +15,7 @@ pub struct World {
     node_table: Table,
     node_data: HashMap<NodeId, Box<(dyn Component + 'static)>>,
     ecs_events: Vec<ECSEvent>,
+    reverse_type_lookup: HashMap<usize, &'static str>,
 }
 
 impl World {
@@ -31,6 +32,8 @@ impl World {
         T: Component + 'static,
     {
         let component_hash = T::hash();
+        self.reverse_type_lookup.insert(component_hash, type_name::<T>());
+        
         let new_node_position = [entity.0, component_hash];
         if let Ok(enabled_node_id) = self.node_table.enable_node(new_node_position) {
             if let Some(old_data) = self.node_data.insert(enabled_node_id, Box::new(component)) {
@@ -149,7 +152,7 @@ impl World {
         }
     }
 
-    pub fn unpack_mut<T>(&mut self, node_bundle: &mut NodeBundle) -> Option<&mut T>
+    pub fn unpack_mut<T>(&mut self, node_bundle: &NodeBundle) -> Option<&mut T>
     where
         T: Component + 'static,
     {

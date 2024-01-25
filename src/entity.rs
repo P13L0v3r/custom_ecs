@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Entity(pub(crate) usize);
 
 impl Entity {

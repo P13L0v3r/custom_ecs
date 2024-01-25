@@ -1,4 +1,4 @@
-use std::{fmt::Debug, slice::Iter, any::type_name};
+use std::{any::type_name, fmt::Debug, slice::Iter};
 
 use crate::{
     events::ECSEvent,
@@ -32,8 +32,9 @@ impl World {
         T: Component + 'static,
     {
         let component_hash = T::hash();
-        self.reverse_type_lookup.insert(component_hash, type_name::<T>());
-        
+        self.reverse_type_lookup
+            .insert(component_hash, type_name::<T>());
+
         let new_node_position = [entity.0, component_hash];
         if let Ok(enabled_node_id) = self.node_table.enable_node(new_node_position) {
             if let Some(old_data) = self.node_data.insert(enabled_node_id, Box::new(component)) {
@@ -144,7 +145,11 @@ impl World {
         let component_hash = T::hash();
         let node_id = NodeId([node_bundle.id, component_hash]);
         if node_bundle.nodes.contains(&node_id) {
-            self.node_data.get(&node_id).unwrap().as_any().downcast_ref::<T>()
+            self.node_data
+                .get(&node_id)
+                .unwrap()
+                .as_any()
+                .downcast_ref::<T>()
         } else {
             None
         }
@@ -157,7 +162,11 @@ impl World {
         let component_hash = T::hash();
         let node_id = NodeId([node_bundle.id, component_hash]);
         if node_bundle.nodes.contains(&node_id) {
-            self.node_data.get_mut(&node_id).unwrap().as_any_mut().downcast_mut::<T>()
+            self.node_data
+                .get_mut(&node_id)
+                .unwrap()
+                .as_any_mut()
+                .downcast_mut::<T>()
         } else {
             None
         }

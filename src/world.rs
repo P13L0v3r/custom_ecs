@@ -1,11 +1,7 @@
 use std::{any::type_name, fmt::Debug, slice::Iter};
 
 use crate::{
-    events::ECSEvent,
-    hashset,
-    table::{NodeBundle, NodeFilter, NodeId, Table},
-    utils::entity_range::ValidEntityRange,
-    Component, Entity,
+    events::ECSEvent, hashset, table::{NodeBundle, NodeFilter, NodeId, Table}, utils::entity_range::ValidEntityRange, Children, Component, Entity, Parent
 };
 use hashbrown::{HashMap, HashSet};
 
@@ -69,6 +65,14 @@ impl World {
     }
 
     pub fn dealloc_entity(&mut self, entity: Entity) {
+        // deallocate any children
+        if let Some(children) = self.entity_component::<Children>(entity).cloned() {
+            for child in children.children.iter() {
+                self.dealloc_entity(*child);
+            }
+        }
+        
+        // delete data for this entity
         if let Ok(component_vector) = self.node_table.get_dimension_at_indices(
             0,
             NodeFilter {
@@ -86,6 +90,28 @@ impl World {
             self.add_valid_entity(entity.0);
             self.ecs_events.push(ECSEvent::EntityDespawned(entity));
         }
+    }
+
+    pub fn add_child(&mut self, parent: Entity, child: Entity) {
+        if let Some(children) = self.entity_component_mut::<Children>(parent) {
+            children.children.insert(child);
+            
+        } else {
+            let mut children = Children { children: HashSet::new() };
+            children.children.insert(child);
+            self.enable_component_for_entity(parent, children);
+        }
+        self.enable_component_for_entity(child, Parent {parent: parent});
+    }
+
+    pub fn remove_child(&mut self, parent: Entity, child: Entity) {
+        if let Some(children) = self.entity_component_mut::<Children>(parent) {
+            children.children.remove(&child);
+            if children.children.is_empty() {
+                self.disable_component_for_entity::<Children>(parent);
+            }
+        }
+        self.disable_component_for_entity::<Parent>(child);
     }
 
     pub fn entity_component<T>(&self, entity: Entity) -> Option<&T>

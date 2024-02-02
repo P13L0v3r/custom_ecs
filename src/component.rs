@@ -11,13 +11,11 @@ pub trait Component {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-pub trait ComponentGroup<'g> {}
+/* pub trait ComponentGroup<'g> {}
 
 #[macro_export]
 macro_rules! component_group {
     ($( $name:ident )+) => {
         impl<'s, $($name: Component),+> ComponentGroup<'s> for ($($name,)+){}
     };
-}
-
-component_group!(Health);
+} */
